@@ -4,11 +4,12 @@ MAINTAINER Jeff Manning
 
 USER root
 
-#install the basic packages
+#install the basic packages, must install sudo - some downstream consumers cannot run as root
 RUN yum clean all && \
     yum -y update && \
+    yum -y install sudo && \
     yum clean all
-RUN yum install -y tar curl net-tools build-essential git wget zip unzip vim && \
+RUN yum install -y tar wget curl net-tools build-essential git wget zip unzip vim && \
     yum clean all
 
 
@@ -22,12 +23,10 @@ ARG UPDATE_VERSION=${JAVA_MAJOR_VERSION}u${JAVA_UPDATE_VERSION}
 ARG BUILD_VERSION=b${JAVA_BUILD_NUMBER}
 ARG JAVA_JDK_HREF_ROOT="http://download.oracle.com/otn-pub/java/jdk/${UPDATE_VERSION}-${BUILD_VERSION}/${JAVA_TOKEN}"
 
-#jdk
+#jdk, jre picker
 ARG JAVA_JDK_DOWNLOAD=jdk-${UPDATE_VERSION}-linux-x64.tar.gz
-
-#jre
 ARG JAVA_JRE_DOWNLOAD=server-jre-${UPDATE_VERSION}-linux-x64.tar.gz
-
+ARG JAVA_DOWNLOAD = ${JAVA_JRE_DOWNLOAD}
 
 ENV JAVA_HOME /usr/jdk1.${JAVA_MAJOR_VERSION}.0_${JAVA_UPDATE_VERSION}
 
@@ -37,7 +36,7 @@ ENV PATH $PATH:$JAVA_HOME/bin
 ENV INSTALL_DIR /usr
 RUN curl -sL --retry 3 --insecure \
   --header "Cookie: oraclelicense=accept-securebackup-cookie;" \
-  "${JAVA_JDK_HREF_ROOT}/${JAVA_JRE_DOWNLOAD}" \
+  "${JAVA_JDK_HREF_ROOT}/${JAVA_DOWNLOAD}" \
   | gunzip \
   | tar x -C $INSTALL_DIR/ \
   && ln -s $JAVA_HOME $INSTALL_DIR/java \
