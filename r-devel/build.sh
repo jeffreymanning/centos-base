@@ -5,13 +5,13 @@
 # - https://github.com/dockerfile/java/blob/master/oracle-java8/Dockerfile
 
 # example:
-#  docker build -t jeffreymanning/jre-mvn-py:1.0.0 -t jeffreymanning/jre-mvn-py:latest .
+#  docker build -t jeffreymanning/r-base:1.0.0 -t jeffreymanning/r-base:latest .
 
 accntTag=jeffreymanning
-projectTag=centos-base
+projectTag=r-devel
 imageTag=${accntTag}/${projectTag}
-versionDef=1.0.0
-version${1:-${versionDef}}
+versionDef=3.4.0
+version=${1:-${versionDef}}
 
 if [ ! "$version" == "" ]; then
     docker build -t ${imageTag}:$version -t ${imageTag}:latest .

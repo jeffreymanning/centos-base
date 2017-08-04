@@ -11,8 +11,7 @@ echo
 
 comment=${1:-No Comment Specified}
 #tag="1.0.0"
-#image="jeffreymanning/centos-base"
-imageTag=${2:-jeffreymanning/centos-base}
+imageTag=${2:-jeffreymanning/r-studio}
 
 docker ps -a
 

@@ -7,10 +7,9 @@ echo "Usage: "
 echo "  ${0} <repo-name/repo-tag>"
 echo
 accntTag=jeffreymanning
-projectTag=centos-base
+projectTag=r-devel
 imageTag=${1:-${accntTag}/${projectTag}}
 
-#instanceName=my-${2:-${imageTag%/*}}_$RANDOM
 instanceName=my-${2:-${imageTag##*/}}
 echo "instanceName ${instanceName}"
 
