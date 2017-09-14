@@ -1,6 +1,6 @@
-LOCAL_IMAGE=r-base
+LOCAL_IMAGE=r-studio
 SPARK_IMAGE=jeffreymanning/$(LOCAL_IMAGE)
-versionDef=3.4.0
+versionDef=1.0.153
 version?=$(versionDef)
 
 # If you're pushing to an integrated registry

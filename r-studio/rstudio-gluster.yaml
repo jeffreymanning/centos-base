@@ -1,0 +1,69 @@
+kind: Template
+apiVersion: v1
+template: rstudio
+metadata:
+  name: rstudio
+labels:
+  app: rstudio-server
+objects:
+
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: ${RSTUDIO_NAME}
+    labels:
+      name: ${RSTUDIO_NAME}
+  spec:
+    ports:
+      - protocol: TCP
+        port: 8787
+        targetPort: 8787
+    selector:
+      name: ${RSTUDIO_NAME}
+
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: ${RSTUDIO_NAME}
+  spec:
+    strategy:
+      type: Rolling
+    triggers:
+      - type: ConfigChange
+    replicas: 1
+    selector:
+      name: ${RSTUDIO_NAME}
+    template:
+      metadata:
+        labels:
+          name: ${RSTUDIO_NAME}
+      spec:
+        containers:
+          - name: ${RSTUDIO_NAME}
+            image: ${RSTUDIO_IMAGE}
+            ports:
+              - containerPort: 8787
+                protocol: TCP
+            volumeMounts:
+              - mountPath: /mnt/data
+                name: glusterfsdata
+              - mountPath: /mnt/logs
+                name: glusterfslogs
+        volumes:
+          - name: glusterfsdata
+            persistentVolumeClaim:
+              claimName: ${GLUSTER_NAME}-scratch
+          - name: glusterfslogs
+            persistentVolumeClaim:
+              claimName: ${GLUSTER_NAME}-logs
+
+parameters:
+- name: RSTUDIO_IMAGE
+  description: Name of the Spark master/worker image
+  value: docker.io/jeffreymanning/r-studio:latest
+- name: RSTUDIO_NAME
+  description: worker name used as a selector
+  generate: expression
+  from: "rstudio-server-[a-z0-9]{4}"
+  required: true
+

@@ -1,4 +1,4 @@
-LOCAL_IMAGE=r-base
+LOCAL_IMAGE=sparkr-base
 SPARK_IMAGE=jeffreymanning/$(LOCAL_IMAGE)
 versionDef=3.4.0
 version?=$(versionDef)

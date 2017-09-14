@@ -1,6 +1,6 @@
-FROM jeffreymanning/centos7-base
-
-MAINTAINER Jeff Manning
+FROM jeffreymanning/centos-base
+# this is geared towards spark environment - see msparkr-base
+LABEL maintainer="JWM"
 
 USER root
 
@@ -15,10 +15,10 @@ RUN yum install -y epel-release && yum clean all
 #R R-core R-core-devel R-devel R-Rcpp R-Rcpp-devel
 # # helpers for R package downloading: libcurl libcurl-devel openssl openssl-devel gnutls gnutls-devel
 RUN yum -y install \
-                   libicu libicu-devel blas blas-devel lapack lapack-devel libxml2 libxml2-devel texinfo texinfo-tex texlive-epsf \
-                   libcurl libcurl-devel openssl openssl-devel gnutls gnutls-devel \
-                   R R-core R-core-devel R-devel && \
-                   yum clean all
+           libicu libicu-devel blas blas-devel lapack lapack-devel libxml2 libxml2-devel texinfo texinfo-tex texlive-epsf \
+           libcurl libcurl-devel openssl openssl-devel gnutls gnutls-devel \
+           R R-core R-core-devel R-devel && \
+           yum clean all
 
 ## alternatively.. using centos
 # http://mirror.centos.org/centos/7/os/x86_64/Packages/<package>
@@ -46,49 +46,62 @@ RUN yum -y install \
 ## Set a default user. Available via runtime flag `--user docker`
 ## Add user to 'staff' group, granting them write privileges to /usr/local/lib/R/site.library
 ## User should also have & own a home directory (for rstudio or linked volumes to work properly).
-#RUN groupadd staff
-#RUN useradd docker \
-#	&& chown docker:docker /home/docker \
-#    && usermod -aG staff docker
+RUN groupadd staff
+RUN useradd docker \
+	&& chown docker:docker /home/docker \
+    && usermod -aG staff docker
 
-## Add a library directory (for user-installed packages)
-RUN mkdir -p /usr/local/lib/R/site-library && \
-    chown root:staff /usr/local/lib/R/site-library && \
-    chmod g+wx /usr/local/lib/R/site-library
-# default package insatalltion to docker location...  will be lost if shutown
-ARG R_STUDIO_LIB_SITE=/usr/local/lib/R/site-library
+## Add a library directory (for user-installed packages) - use mount (gluster) if set, note space...
+ENV R_LIBS_USER=""
+ENV R_STUDIO_LIB_SITE=""
+RUN if (-z "${R_STUDIO_LIB_SITE}"); then echo empty; else echo ${R_STUDIO_LIB_SITE}; fi
+RUN mount | grep "${R_STUDIO_LIB_SITE} " > /dev/null && echo mounted || echo unmounted
+RUN if ( (-z "${R_STUDIO_LIB_SITE} ") && (mount | grep "${R_STUDIO_LIB_SITE} ")); \
+        then \
+            mkdir -p ${R_STUDIO_LIB_SITE}/R/site-library \
+            chown root:staff /usr/local/lib/R/site-library && \
+            chmod g+wx /usr/local/lib/R/site-library \
+            R_LIBS_USER=${R_STUDIO_LIB_SITE}/R/site-library; \
+        else \
+            mkdir -p /usr/local/lib/R/site-library && \
+            chown root:staff /usr/local/lib/R/site-library && \
+            chmod g+wx /usr/local/lib/R/site-library && \
+            R_LIBS_USER=/usr/local/lib/R/site-library; \
+        fi
+
+# the old, hard coded way
+#RUN mkdir -p /usr/local/lib/R/site-library && \
+#    chown root:staff /usr/local/lib/R/site-library && \
+#    chmod g+wx /usr/local/lib/R/site-library
+#ENV R_LIBS_USER=/usr/local/lib/R/site-library
 
 # setup some environment stuff - https://cran.r-project.org/mirrors.html
 # https://cran.cnr.berkeley.edu/
 # http://cran.stat.ucla.edu/
 # http://lib.stat.cmu.edu/R/CRAN/
-ARG CRAN_REPO=http://lib.stat.cmu.edu/R/CRAN/
-ARG BIO_REPO=https://bioconductor.org/
+ENV CRAN_REPO=http://lib.stat.cmu.edu/R/CRAN/
+ENV BIO_REPO=https://bioconductor.org/
 
 ## Fix library path to confirm (R then .libPaths())
 # "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/share/R/library:/usr/lib64/R/library'}"
 ENV R_HOME=/usr/lib64/R
-ENV R_LIBS_USER=${R_STUDIO_LIB_SITE}
 ENV R_LIBS=${R_LIBS_USER}:/usr/share/R/library:/usr/lib64/R/library
 RUN echo 'options(repos = c(CRAN = "${CRAN_REPO}"), download.file.method = "libcurl")' >> ${R_HOME}/etc/Rprofile.site
 RUN echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> ${R_HOME}/etc/Renviron
 
-# miniml [packages required to build R interpreter
-RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('evaluate'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-
 ## install littler...  helps with scripting/installing
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('littler'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#
-##install docopt...  also helps with installation (very cool) - install stringr 1st...
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('stringr'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('docopt'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#
-## finally devtools to build out of git repos (if necessary)
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('curl'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('R6'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('whisker'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('httr'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
-#RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('devtools'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('littler'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+
+#install docopt...  also helps with installation (very cool) - install stringr 1st...
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('stringr'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('docopt'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+
+# finally devtools to build out of git repos (if necessary)
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('curl'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('R6'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('whisker'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('httr'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
+RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('devtools'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
 
 #### Define default command.
 CMD ["R"]

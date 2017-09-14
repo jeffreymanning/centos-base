@@ -1,4 +1,4 @@
-FROM jeffreymanning/r-base
+FROM jeffreymanning/sparkr-base
 
 MAINTAINER Jeff Manning
 
@@ -6,6 +6,7 @@ USER root
 
 #install the basic packages, must install sudo - some downstream consumers cannot run as root
 RUN yum clean all && \
+    rm -rf /var/cache/yum && \
     yum -y update && \
     yum clean all
 
@@ -72,5 +73,5 @@ COPY userconf.sh /etc/cont-init.d/userconf
 #CMD ["R"]
 
 EXPOSE 8787
-CMD ["/usr/lib/rstudio-server/bin/rserver --server-daemonize 0"]
+CMD /usr/lib/rstudio-server/bin/rserver --server-daemonize 0
 

@@ -1,24 +1,28 @@
-FROM jeffreymanning/centos7-base
-
-MAINTAINER Jeff Manning
+#FROM jeffreymanning/centos-base
+# this is geared towards spark environment
+FROM jeffreymanning/spark-api
+LABEL maintainer="JWM"
 
 USER root
 
 #install the basic packages, must install sudo - some downstream consumers cannot run as root
 RUN yum clean all && \
     yum -y update && \
-    yum clean all
+    yum clean all && \
+    rm -rf /var/cache/yum
 
+# epel installed in sprk-base
 ###  R lives in the epel-release, https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm or
-RUN yum install -y epel-release && yum clean all
+# RUN yum install -y epel-release && yum clean all
 # R-${R_BASE_VERSION} R-core-${R_BASE_VERSION} R-core-devel-${R_BASE_VERSION} R-devel-${R_BASE_VERSION} && \
 #R R-core R-core-devel R-devel R-Rcpp R-Rcpp-devel
 # # helpers for R package downloading: libcurl libcurl-devel openssl openssl-devel gnutls gnutls-devel
 RUN yum -y install \
-                   libicu libicu-devel blas blas-devel lapack lapack-devel libxml2 libxml2-devel texinfo texinfo-tex texlive-epsf \
-                   libcurl libcurl-devel openssl openssl-devel gnutls gnutls-devel \
-                   R R-core R-core-devel R-devel && \
-                   yum clean all
+           libicu libicu-devel blas blas-devel lapack lapack-devel libxml2 libxml2-devel texinfo texinfo-tex texlive-epsf \
+           libcurl libcurl-devel openssl openssl-devel gnutls gnutls-devel \
+           R R-core R-core-devel R-devel && \
+           yum clean all && \
+           rm -rf /var/cache/yum
 
 ## alternatively.. using centos
 # http://mirror.centos.org/centos/7/os/x86_64/Packages/<package>
@@ -55,6 +59,7 @@ RUN yum -y install \
 RUN mkdir -p /usr/local/lib/R/site-library && \
     chown root:staff /usr/local/lib/R/site-library && \
     chmod g+wx /usr/local/lib/R/site-library
+
 # default package insatalltion to docker location...  will be lost if shutown
 ARG R_STUDIO_LIB_SITE=/usr/local/lib/R/site-library
 
@@ -72,9 +77,6 @@ ENV R_LIBS_USER=${R_STUDIO_LIB_SITE}
 ENV R_LIBS=${R_LIBS_USER}:/usr/share/R/library:/usr/lib64/R/library
 RUN echo 'options(repos = c(CRAN = "${CRAN_REPO}"), download.file.method = "libcurl")' >> ${R_HOME}/etc/Rprofile.site
 RUN echo "R_LIBS=\${R_LIBS-'/usr/local/lib/R/site-library:/usr/local/lib/R/library:/usr/lib/R/library'}" >> ${R_HOME}/etc/Renviron
-
-# miniml [packages required to build R interpreter
-RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('evaluate'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
 
 ## install littler...  helps with scripting/installing
 #RUN /usr/bin/Rscript --slave --no-save --no-restore-history -e "install.packages(pkgs=c('littler'), Sys.getenv('R_LIBS_USER'), repos='${CRAN_REPO}')"
